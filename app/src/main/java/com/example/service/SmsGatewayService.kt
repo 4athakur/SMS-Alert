@@ -57,6 +57,7 @@ class SmsGatewayService : Service() {
             httpServer = SmsHttpServer(applicationContext, port, repository)
             httpServer?.start()
         }
+        isRunning = true
 
         val notification = buildNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -82,6 +83,7 @@ class SmsGatewayService : Service() {
     private fun stopServer() {
         httpServer?.stop()
         httpServer = null
+        isRunning = false
     }
 
     private fun buildNotification(): Notification {
@@ -145,5 +147,7 @@ class SmsGatewayService : Service() {
         const val ACTION_STOP = "com.example.SMS_GATEWAY_STOP"
         private const val CHANNEL_ID = "sms_gateway_channel"
         private const val NOTIFICATION_ID = 8080
+
+        var isRunning = false
     }
 }

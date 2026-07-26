@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SimCard
@@ -54,6 +55,7 @@ import com.example.data.repository.SmsGatewayRepository
 import com.example.ui.MainViewModel
 import com.example.ui.screens.ApiKeysScreen
 import com.example.ui.screens.DashboardScreen
+import com.example.ui.screens.DocumentationScreen
 import com.example.ui.screens.LogsScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.SimNetworkScreen
@@ -111,6 +113,7 @@ enum class NavigationTab(
 ) {
     DASHBOARD("Dashboard", Icons.Default.Dashboard, "tab_dashboard"),
     API_KEYS("API & Keys", Icons.Default.Code, "tab_api_keys"),
+    DOCS("Documentation", Icons.Default.Description, "tab_docs"),
     LOGS("SMS Logs", Icons.Default.ListAlt, "tab_logs"),
     SIM_NETWORK("SIM & Network", Icons.Default.SimCard, "tab_sim_network"),
     SETTINGS("Settings", Icons.Default.Settings, "tab_settings")
@@ -226,6 +229,10 @@ fun SmsGatewayApp(viewModel: MainViewModel) {
                     totalCount = totalCount,
                     successCount = successCount,
                     failedCount = failedCount
+                )
+                NavigationTab.DOCS -> DocumentationScreen(
+                    viewModel = viewModel,
+                    serverState = serverState
                 )
                 NavigationTab.API_KEYS -> ApiKeysScreen(
                     viewModel = viewModel,

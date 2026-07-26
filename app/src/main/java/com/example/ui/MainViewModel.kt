@@ -84,6 +84,7 @@ class MainViewModel(private val repository: SmsGatewayRepository) : ViewModel() 
             val port = repository.config.port
 
             _serverState.value = _serverState.value.copy(
+                isRunning = SmsGatewayService.isRunning,
                 ipAddress = ip,
                 port = port,
                 networkType = net,
