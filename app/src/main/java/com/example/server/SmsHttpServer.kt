@@ -113,55 +113,101 @@ class SmsHttpServer(
             })
         }
 
-        val phoneNumber = jsonBody.optString("phone_number", jsonBody.optString("phoneNumber", "")).trim()
+        val phoneNumbers = mutableListOf<String>()
+        val phoneNumObj = jsonBody.opt("phone_number") ?: jsonBody.opt("phoneNumber")
+        
+        if (phoneNumObj is JSONArray) {
+            for (i in 0 until phoneNumObj.length()) {
+                val num = phoneNumObj.optString(i).trim()
+                if (num.isNotEmpty()) phoneNumbers.add(num)
+            }
+        } else if (phoneNumObj is String) {
+            val num = phoneNumObj.trim()
+            if (num.isNotEmpty()) phoneNumbers.add(num)
+        }
+
         val message = jsonBody.optString("message", "").trim()
         val simSlot = jsonBody.optInt("sim_slot", jsonBody.optInt("simSlot", repository.config.defaultSimSlot))
 
-        if (phoneNumber.isBlank() || message.isBlank()) {
+        if (phoneNumbers.isEmpty() || message.isBlank()) {
             return sendJsonResponse(400, JSONObject().apply {
                 put("success", false)
-                put("error", "Bad Request: Both 'phone_number' and 'message' are required")
+                put("error", "Bad Request: Both 'phone_number' (string or array) and 'message' are required")
             })
         }
 
-        val messageId = "msg_" + UUID.randomUUID().toString().replace("-", "").take(16)
-        val dispatched = SmsDispatcher.sendSms(context, phoneNumber, message, messageId, simSlot)
-        val processingTimeMs = System.currentTimeMillis() - startTimeMs
-        val logStatus = if (dispatched) "PENDING" else "FAILED"
-        val errorMessage = if (!dispatched) "Failed to dispatch SMS via SmsManager (check permissions/SIM)" else null
+        val results = JSONArray()
+        var successfulCount = 0
 
-        CoroutineScope(Dispatchers.IO).launch {
-            repository.logSmsRequest(
-                SmsLog(
-                    messageId = messageId,
-                    phoneNumber = phoneNumber,
-                    message = message,
-                    status = logStatus,
-                    simSlot = simSlot,
-                    clientIp = clientIp,
-                    errorMessage = errorMessage,
-                    processingTimeMs = processingTimeMs,
-                    timestamp = startTimeMs
+        for (phoneNumber in phoneNumbers) {
+            val messageId = "msg_" + UUID.randomUUID().toString().replace("-", "").take(16)
+            val dispatched = SmsDispatcher.sendSms(context, phoneNumber, message, messageId, simSlot)
+            
+            if (dispatched) successfulCount++
+            
+            val logStatus = if (dispatched) "PENDING" else "FAILED"
+            val errorMessage = if (!dispatched) "Failed to dispatch SMS via SmsManager (check permissions/SIM)" else null
+
+            CoroutineScope(Dispatchers.IO).launch {
+                repository.logSmsRequest(
+                    SmsLog(
+                        messageId = messageId,
+                        phoneNumber = phoneNumber,
+                        message = message,
+                        status = logStatus,
+                        simSlot = simSlot,
+                        clientIp = clientIp,
+                        errorMessage = errorMessage,
+                        processingTimeMs = System.currentTimeMillis() - startTimeMs,
+                        timestamp = startTimeMs
+                    )
                 )
-            )
+            }
+            
+            results.put(JSONObject().apply {
+                put("phone_number", phoneNumber)
+                put("message_id", messageId)
+                put("success", dispatched)
+                if (dispatched) {
+                    put("status", "SMS Queued/Sent")
+                } else {
+                    put("error", errorMessage)
+                }
+            })
+        }
+        
+        val processingTimeMs = System.currentTimeMillis() - startTimeMs
+        val anySuccess = successfulCount > 0
+        val allSuccess = successfulCount == phoneNumbers.size
+
+        val responseJson = JSONObject().apply {
+            put("success", anySuccess)
+            put("processing_time_ms", processingTimeMs)
+            put("total_recipients", phoneNumbers.size)
+            put("successful_dispatches", successfulCount)
+            
+            if (phoneNumbers.size == 1) {
+                // Backward compatibility for single number
+                val firstResult = results.getJSONObject(0)
+                put("message_id", firstResult.optString("message_id"))
+                put("phone_number", firstResult.optString("phone_number"))
+                put("status", firstResult.optString("status", "FAILED"))
+                put("sim_slot", simSlot)
+                if (!firstResult.getBoolean("success")) {
+                    put("error", firstResult.optString("error"))
+                }
+            }
+            
+            put("results", results)
         }
 
-        return if (dispatched) {
-            sendJsonResponse(200, JSONObject().apply {
-                put("success", true)
-                put("message_id", messageId)
-                put("phone_number", phoneNumber)
-                put("status", "SMS Queued/Sent")
-                put("sim_slot", simSlot)
-                put("processing_time_ms", processingTimeMs)
-            })
-        } else {
-            sendJsonResponse(500, JSONObject().apply {
-                put("success", false)
-                put("error", errorMessage ?: "Internal error sending SMS")
-                put("processing_time_ms", processingTimeMs)
-            })
+        val statusCode = when {
+            allSuccess -> 200
+            anySuccess -> 207 // Multi-Status (partial success)
+            else -> 500
         }
+
+        return sendJsonResponse(statusCode, responseJson)
     }
 
     private fun handleStatus(session: IHTTPSession): Response {
@@ -231,8 +277,12 @@ class SmsHttpServer(
     }
 
     private fun sendJsonResponse(statusCode: Int, jsonResponse: JSONObject): Response {
-        val status = when (statusCode) {
+        val status: NanoHTTPD.Response.IStatus = when (statusCode) {
             200 -> Response.Status.OK
+            207 -> object : Response.IStatus {
+                override fun getDescription() = "207 Multi-Status"
+                override fun getRequestStatus() = 207
+            }
             400 -> Response.Status.BAD_REQUEST
             401 -> Response.Status.UNAUTHORIZED
             405 -> Response.Status.METHOD_NOT_ALLOWED

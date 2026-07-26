@@ -22,7 +22,8 @@ import com.example.ui.theme.TextWhite
 @Composable
 fun DocumentationScreen(
     viewModel: MainViewModel,
-    serverState: ServerUiState
+    serverState: ServerUiState,
+    onBack: () -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier
@@ -34,14 +35,14 @@ fun DocumentationScreen(
             Text(
                 text = "API Documentation",
                 style = MaterialTheme.typography.headlineMedium,
-                color = TextWhite,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             Text(
                 text = "Integrate seamlessly with the SMS Gateway Server. All endpoints are accessible when the server is running on the local network.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSlate400
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
@@ -57,23 +58,44 @@ fun DocumentationScreen(
             ApiEndpoint(
                 method = "POST",
                 path = "/send-sms",
-                description = "Send a new SMS message. Both phone_number and message are required. Optional sim_slot (0 or 1).",
+                description = "Send a new SMS message. You can provide a single string or an array of strings for phone_number. Optional sim_slot (0 or 1).",
                 requestBody = """
+// Single recipient
 {
   "phone_number": "+1234567890",
   "message": "Hello World",
   "sim_slot": 0
 }
+
+// Multiple recipients
+{
+  "phone_number": ["+1234567890", "+0987654321"],
+  "message": "Hello Bulk",
+  "sim_slot": 1
+}
                 """.trimIndent(),
                 responseBody = """
 {
   "success": true,
-  "message_id": "msg_1234567890",
-  "phone_number": "+1234567890",
-  "status": "SMS Queued/Sent",
-  "sim_slot": 0,
-  "processing_time_ms": 42
+  "processing_time_ms": 42,
+  "total_recipients": 2,
+  "successful_dispatches": 2,
+  "results": [
+    {
+      "phone_number": "+1234567890",
+      "message_id": "msg_abc123",
+      "success": true,
+      "status": "SMS Queued/Sent"
+    },
+    {
+      "phone_number": "+0987654321",
+      "message_id": "msg_def456",
+      "success": true,
+      "status": "SMS Queued/Sent"
+    }
+  ]
 }
+// Note: For backward compatibility, when a single phone_number is provided, the root object will also include message_id, phone_number, and status fields.
                 """.trimIndent()
             )
         }
@@ -140,21 +162,21 @@ fun DocumentationScreen(
 private fun ApiSection(title: String, description: String, code: String) {
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = TextWhite,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSlate400,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
             Box(
@@ -187,7 +209,7 @@ private fun ApiEndpoint(
 
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -210,7 +232,7 @@ private fun ApiEndpoint(
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = path,
-                    color = TextWhite,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
@@ -220,7 +242,7 @@ private fun ApiEndpoint(
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSlate400,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
@@ -228,7 +250,7 @@ private fun ApiEndpoint(
                 Text(
                     text = "Request Body",
                     style = MaterialTheme.typography.labelMedium,
-                    color = TextWhite,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
                 Box(
@@ -239,7 +261,7 @@ private fun ApiEndpoint(
                 ) {
                     Text(
                         text = requestBody,
-                        color = TextSlate400,
+                        color = Color(0xFF94A3B8),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 12.sp
                     )
@@ -250,7 +272,7 @@ private fun ApiEndpoint(
             Text(
                 text = "Response",
                 style = MaterialTheme.typography.labelMedium,
-                color = TextWhite,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(bottom = 4.dp)
             )
             Box(
@@ -261,7 +283,7 @@ private fun ApiEndpoint(
             ) {
                 Text(
                     text = responseBody,
-                    color = TextSlate400,
+                    color = Color(0xFF94A3B8),
                     fontFamily = FontFamily.Monospace,
                     fontSize = 12.sp
                 )

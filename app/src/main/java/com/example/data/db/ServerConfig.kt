@@ -34,6 +34,10 @@ class ServerConfigManager(context: Context) {
         get() = prefs.getString(KEY_ACTIVE_API_KEY, "") ?: ""
         set(value) = prefs.edit().putString(KEY_ACTIVE_API_KEY, value).apply()
 
+    var appTheme: String
+        get() = prefs.getString(KEY_APP_THEME, "DARK") ?: "DARK"
+        set(value) = prefs.edit().putString(KEY_APP_THEME, value).apply()
+
     companion object {
         private const val KEY_PORT = "server_port"
         private const val KEY_AUTO_START = "auto_start_boot"
@@ -42,5 +46,6 @@ class ServerConfigManager(context: Context) {
         private const val KEY_DEFAULT_SIM = "default_sim"
         private const val KEY_CLOUD_SYNC = "cloud_sync"
         private const val KEY_ACTIVE_API_KEY = "active_api_key"
+        private const val KEY_APP_THEME = "app_theme"
     }
 }

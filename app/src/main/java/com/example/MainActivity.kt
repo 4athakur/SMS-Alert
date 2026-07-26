@@ -9,57 +9,31 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.ListAlt
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SimCard
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.activity.compose.BackHandler
 import com.example.data.repository.SmsGatewayRepository
 import com.example.ui.MainViewModel
-import com.example.ui.screens.ApiKeysScreen
-import com.example.ui.screens.DashboardScreen
-import com.example.ui.screens.DocumentationScreen
-import com.example.ui.screens.LogsScreen
-import com.example.ui.screens.SettingsScreen
-import com.example.ui.screens.SimNetworkScreen
-import com.example.ui.theme.MyApplicationTheme
+import com.example.ui.screens.*
+import com.example.ui.theme.*
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -79,7 +53,8 @@ class MainActivity : ComponentActivity() {
         requestGatewayPermissions()
 
         setContent {
-            MyApplicationTheme {
+            val appTheme by viewModel.appTheme.collectAsStateWithLifecycle()
+            MyApplicationTheme(appThemeStr = appTheme) {
                 SmsGatewayApp(viewModel = viewModel)
             }
         }
@@ -113,7 +88,6 @@ enum class NavigationTab(
 ) {
     DASHBOARD("Dashboard", Icons.Default.Dashboard, "tab_dashboard"),
     API_KEYS("API & Keys", Icons.Default.Code, "tab_api_keys"),
-    DOCS("Documentation", Icons.Default.Description, "tab_docs"),
     LOGS("SMS Logs", Icons.Default.ListAlt, "tab_logs"),
     SIM_NETWORK("SIM & Network", Icons.Default.SimCard, "tab_sim_network"),
     SETTINGS("Settings", Icons.Default.Settings, "tab_settings")
@@ -123,7 +97,9 @@ enum class NavigationTab(
 @Composable
 fun SmsGatewayApp(viewModel: MainViewModel) {
     val context = LocalContext.current
+
     var selectedTab by remember { mutableIntStateOf(0) }
+    var showDocumentation by remember { mutableStateOf(false) }
 
     val serverState by viewModel.serverState.collectAsStateWithLifecycle()
     val totalCount by viewModel.totalCount.collectAsStateWithLifecycle()
@@ -133,6 +109,7 @@ fun SmsGatewayApp(viewModel: MainViewModel) {
     val apiKeys by viewModel.apiKeys.collectAsStateWithLifecycle()
     val simCards by viewModel.simCards.collectAsStateWithLifecycle()
     val selectedLog by viewModel.selectedLogForDetail.collectAsStateWithLifecycle()
+    val appTheme by viewModel.appTheme.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.refreshState(context)
@@ -140,117 +117,229 @@ fun SmsGatewayApp(viewModel: MainViewModel) {
 
     val currentTab = NavigationTab.entries[selectedTab]
 
-    Scaffold(
-        topBar = {
-            androidx.compose.foundation.layout.Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp)
-                    .windowInsetsPadding(WindowInsets.statusBars),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-            ) {
-                androidx.compose.foundation.layout.Column {
-                    Text(
-                        text = "SMS GATEWAY",
-                        style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-                        color = com.example.ui.theme.Blue400,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp
-                    )
-                    Text(
-                        text = currentTab.title,
-                        style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
-                        color = com.example.ui.theme.TextWhite,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-                androidx.compose.foundation.layout.Row(
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+    var isSidebarOpen by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = isSidebarOpen || showDocumentation) {
+        if (isSidebarOpen) {
+            isSidebarOpen = false
+        } else if (showDocumentation) {
+            showDocumentation = false
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp)
+                        .windowInsetsPadding(WindowInsets.statusBars),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val statusColor = if (serverState.isRunning) com.example.ui.theme.Emerald500 else com.example.ui.theme.Rose500
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(statusColor, CircleShape)
-                    )
-                    Text(
-                        text = if (serverState.isRunning) "SERVER LIVE" else "OFFLINE",
-                        style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-                        color = statusColor,
-                        fontWeight = FontWeight.Medium,
-                        letterSpacing = 0.sp
-                    )
-                }
-            }
-        },
-        bottomBar = {
-            androidx.compose.material3.Surface(
-                color = com.example.ui.theme.BottomNavBg,
-                modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
-            ) {
-                androidx.compose.foundation.layout.Column {
-                    androidx.compose.material3.Divider(color = androidx.compose.material3.MaterialTheme.colorScheme.outline, thickness = 1.dp)
-                    NavigationBar(
-                        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                        tonalElevation = 0.dp
-                    ) {
-                        NavigationTab.entries.forEachIndexed { index, tab ->
-                            NavigationBarItem(
-                                selected = selectedTab == index,
-                                onClick = { selectedTab = index },
-                                icon = { Icon(imageVector = tab.icon, contentDescription = tab.title) },
-                                label = { Text(tab.title.uppercase(), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp) },
-                                modifier = Modifier.testTag(tab.tag),
-                                colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
-                                    selectedIconColor = com.example.ui.theme.Blue400,
-                                    selectedTextColor = com.example.ui.theme.Blue400,
-                                    unselectedIconColor = com.example.ui.theme.TextSlate500,
-                                    unselectedTextColor = com.example.ui.theme.TextSlate500,
-                                    indicatorColor = androidx.compose.ui.graphics.Color.Transparent
-                                )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.padding(start = 8.dp)) {
+                            Text(
+                                text = "SMS GATEWAY",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.sp
                             )
+                            Text(
+                                text = if (showDocumentation) "Documentation" else currentTab.title,
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val statusColor = if (serverState.isRunning) Emerald500 else Rose500
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(statusColor, CircleShape)
+                        )
+                        Text(
+                            text = if (serverState.isRunning) "SERVER LIVE" else "OFFLINE",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = statusColor,
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = 0.sp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        IconButton(onClick = { isSidebarOpen = true }) {
+                            Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onBackground)
+                        }
+                    }
+                }
+            },
+            bottomBar = {
+                if (!showDocumentation) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+                    ) {
+                        Column {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 1.dp)
+                            NavigationBar(
+                                containerColor = Color.Transparent,
+                                tonalElevation = 0.dp
+                            ) {
+                                NavigationTab.entries.forEachIndexed { index, tab ->
+                                    NavigationBarItem(
+                                        selected = selectedTab == index,
+                                        onClick = { selectedTab = index },
+                                        icon = { Icon(imageVector = tab.icon, contentDescription = tab.title) },
+                                        label = { Text(tab.title.uppercase(), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp) },
+                                        modifier = Modifier.testTag(tab.tag),
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            indicatorColor = Color.Transparent
+                                        )
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                if (showDocumentation) {
+                    DocumentationScreen(
+                        viewModel = viewModel,
+                        serverState = serverState,
+                        onBack = { showDocumentation = false }
+                    )
+                } else {
+                    when (currentTab) {
+                        NavigationTab.DASHBOARD -> DashboardScreen(
+                            viewModel = viewModel,
+                            serverState = serverState,
+                            totalCount = totalCount,
+                            successCount = successCount,
+                            failedCount = failedCount
+                        )
+                        NavigationTab.API_KEYS -> ApiKeysScreen(
+                            viewModel = viewModel,
+                            apiKeys = apiKeys,
+                            activeKey = serverState.activeApiKey
+                        )
+                        NavigationTab.LOGS -> LogsScreen(
+                            viewModel = viewModel,
+                            logs = logs,
+                            selectedLog = selectedLog
+                        )
+                        NavigationTab.SIM_NETWORK -> SimNetworkScreen(
+                            viewModel = viewModel,
+                            simCards = simCards
+                        )
+                        NavigationTab.SETTINGS -> SettingsScreen(
+                            viewModel = viewModel
+                        )
+                    }
+                }
+            }
         }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+        
+        // Right Sidebar Overlay
+        if (isSidebarOpen) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null
+                    ) { isSidebarOpen = false }
+            )
+        }
+
+        androidx.compose.animation.AnimatedVisibility(
+            visible = isSidebarOpen,
+            enter = androidx.compose.animation.slideInHorizontally(
+                initialOffsetX = { fullWidth -> fullWidth },
+                animationSpec = androidx.compose.animation.core.tween(durationMillis = 350, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+            ) + androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.slideOutHorizontally(
+                targetOffsetX = { fullWidth -> fullWidth },
+                animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+            ) + androidx.compose.animation.fadeOut(),
+            modifier = Modifier.align(Alignment.CenterEnd)
         ) {
-            when (currentTab) {
-                NavigationTab.DASHBOARD -> DashboardScreen(
-                    viewModel = viewModel,
-                    serverState = serverState,
-                    totalCount = totalCount,
-                    successCount = successCount,
-                    failedCount = failedCount
-                )
-                NavigationTab.DOCS -> DocumentationScreen(
-                    viewModel = viewModel,
-                    serverState = serverState
-                )
-                NavigationTab.API_KEYS -> ApiKeysScreen(
-                    viewModel = viewModel,
-                    apiKeys = apiKeys,
-                    activeKey = serverState.activeApiKey
-                )
-                NavigationTab.LOGS -> LogsScreen(
-                    viewModel = viewModel,
-                    logs = logs,
-                    selectedLog = selectedLog
-                )
-                NavigationTab.SIM_NETWORK -> SimNetworkScreen(
-                    viewModel = viewModel,
-                    simCards = simCards
-                )
-                NavigationTab.SETTINGS -> SettingsScreen(
-                    viewModel = viewModel
-                )
+            Surface(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(280.dp)
+                    .clickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null
+                    ) { /* Consume clicks */ },
+                color = MaterialTheme.colorScheme.surface,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp),
+                tonalElevation = 4.dp
+            ) {
+                Column {
+                    Spacer(Modifier.height(32.dp).windowInsetsPadding(WindowInsets.statusBars))
+                    Text(
+                        "Gateway Menu",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.Description, contentDescription = null) },
+                        label = { Text("Documentation") },
+                        selected = showDocumentation,
+                        onClick = {
+                            showDocumentation = true
+                            isSidebarOpen = false
+                        },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outline)
+                    Text(
+                        "Theme",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    listOf("LIGHT" to "Light Mode", "DARK" to "Dark Mode", "AMOLED" to "AMOLED Mode").forEach { (themeCode, themeName) ->
+                        NavigationDrawerItem(
+                            icon = {
+                                val icon = when (themeCode) {
+                                    "LIGHT" -> Icons.Default.WbSunny
+                                    "DARK" -> Icons.Default.DarkMode
+                                    else -> Icons.Default.Brightness3
+                                }
+                                Icon(icon, contentDescription = null)
+                            },
+                            label = { Text(themeName) },
+                            selected = appTheme == themeCode,
+                            onClick = {
+                                viewModel.setTheme(themeCode)
+                            },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        )
+                    }
+                }
             }
         }
     }

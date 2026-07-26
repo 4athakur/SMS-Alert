@@ -33,6 +33,9 @@ class MainViewModel(private val repository: SmsGatewayRepository) : ViewModel() 
     private val _serverState = MutableStateFlow(ServerUiState())
     val serverState: StateFlow<ServerUiState> = _serverState.asStateFlow()
 
+    private val _appTheme = MutableStateFlow(repository.config.appTheme)
+    val appTheme: StateFlow<String> = _appTheme.asStateFlow()
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
@@ -196,6 +199,11 @@ class MainViewModel(private val repository: SmsGatewayRepository) : ViewModel() 
 
     fun toggleAutoStartOnBoot(enabled: Boolean) {
         repository.config.autoStartOnBoot = enabled
+    }
+
+    fun setTheme(theme: String) {
+        repository.config.appTheme = theme
+        _appTheme.value = theme
     }
 
     class Factory(private val repository: SmsGatewayRepository) : ViewModelProvider.Factory {
