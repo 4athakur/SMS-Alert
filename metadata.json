@@ -1,0 +1,6 @@
+{
+  "name": "SMS Gateway",
+  "description": "Production-grade Android SMS Gateway Server hosting an embedded HTTP REST API for remote SMS sending, authentication, dual-SIM support, background service, and analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
