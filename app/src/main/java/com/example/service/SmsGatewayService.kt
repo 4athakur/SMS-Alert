@@ -21,17 +21,52 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 
 class SmsGatewayService : Service() {
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var httpServer: SmsHttpServer? = null
     private lateinit var repository: SmsGatewayRepository
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
     override fun onCreate() {
         super.onCreate()
         repository = SmsGatewayRepository(applicationContext)
         createNotificationChannel()
+        registerNetworkCallback()
+        // Removed periodic duckdns update
+    }
+
+    private fun registerNetworkCallback() {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        if (connectivityManager == null) return
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        
+        networkCallback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                super.onAvailable(network)
+                restartNgrok()
+            }
+        }
+        connectivityManager.registerNetworkCallback(request, networkCallback!!)
+    }
+
+    private fun restartNgrok() {
+        serviceScope.launch {
+            val token = repository.config.ngrokToken
+            if (token.isNotBlank()) {
+                com.example.server.NgrokManager.start(applicationContext, repository.config.port, token) { url ->
+                    repository.config.ngrokUrl = url
+                }
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -60,6 +95,7 @@ class SmsGatewayService : Service() {
         isRunning = true
 
         val notification = buildNotification()
+        restartNgrok()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val foregroundServiceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
@@ -83,6 +119,7 @@ class SmsGatewayService : Service() {
     private fun stopServer() {
         httpServer?.stop()
         httpServer = null
+        com.example.server.NgrokManager.stop()
         isRunning = false
     }
 
@@ -136,6 +173,10 @@ class SmsGatewayService : Service() {
 
     override fun onDestroy() {
         stopServer()
+        networkCallback?.let {
+            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            connectivityManager?.unregisterNetworkCallback(it)
+        }
         serviceScope.cancel()
         super.onDestroy()
     }

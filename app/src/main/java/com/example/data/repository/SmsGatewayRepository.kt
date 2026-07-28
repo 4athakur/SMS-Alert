@@ -120,10 +120,11 @@ class SmsGatewayRepository(private val context: Context) {
 
     fun generatePythonSnippet(apiKey: String, port: Int): String {
         val ip = NetworkUtils.getLocalIpAddress()
+        val baseUrl = if (config.ngrokUrl.isNotBlank()) config.ngrokUrl else "http://$ip:$port"
         return """
 import requests
 
-url = "http://$ip:$port/send-sms"
+url = "$baseUrl/send-sms"
 headers = {
     "X-API-Key": "$apiKey",
     "Content-Type": "application/json"
@@ -142,8 +143,9 @@ print("Response:", response.json())
 
     fun generateCurlSnippet(apiKey: String, port: Int): String {
         val ip = NetworkUtils.getLocalIpAddress()
+        val baseUrl = if (config.ngrokUrl.isNotBlank()) config.ngrokUrl else "http://$ip:$port"
         return """
-curl -X POST "http://$ip:$port/send-sms" \
+curl -X POST "$baseUrl/send-sms" \
   -H "X-API-Key: $apiKey" \
   -H "Content-Type: application/json" \
   -d '{

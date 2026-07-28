@@ -1,0 +1,4 @@
+sed -i 's/var duckDnsDomain by remember { mutableStateOf(viewModel.serverState.value.duckDnsDomain) }/\/\/ removed duckDnsDomain/g' app/src/main/java/com/example/ui/screens/SettingsScreen.kt
+sed -i 's/var duckDnsToken by remember { mutableStateOf(viewModel.serverState.value.duckDnsToken) }/var ngrokToken by remember { mutableStateOf(viewModel.serverState.value.ngrokToken) }/g' app/src/main/java/com/example/ui/screens/SettingsScreen.kt
+sed -i 's/Dynamic DNS (DuckDNS)/Ngrok Tunnel/g' app/src/main/java/com/example/ui/screens/SettingsScreen.kt
+sed -i 's/Automatically update a DuckDNS hostname when the mobile IP address changes, so you can always reach the server using a consistent domain name./Expose the local server securely using Ngrok to generate a stable public HTTPS URL./g' app/src/main/java/com/example/ui/screens/SettingsScreen.kt

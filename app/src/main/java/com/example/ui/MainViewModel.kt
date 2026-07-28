@@ -25,12 +25,19 @@ data class ServerUiState(
     val ipAddress: String = "127.0.0.1",
     val port: Int = 8080,
     val networkType: String = "Unknown",
-    val activeApiKey: String = ""
+    val activeApiKey: String = "",
+    val ngrokUrl: String = "",
+    val ngrokToken: String = ""
 )
 
 class MainViewModel(private val repository: SmsGatewayRepository) : ViewModel() {
 
-    private val _serverState = MutableStateFlow(ServerUiState())
+    private val _serverState = MutableStateFlow(ServerUiState(
+        port = repository.config.port,
+        activeApiKey = repository.config.activeApiKey,
+        ngrokUrl = repository.config.ngrokUrl,
+        ngrokToken = repository.config.ngrokToken
+    ))
     val serverState: StateFlow<ServerUiState> = _serverState.asStateFlow()
 
     private val _appTheme = MutableStateFlow(repository.config.appTheme)
@@ -127,6 +134,20 @@ class MainViewModel(private val repository: SmsGatewayRepository) : ViewModel() 
     fun toggleApiKeyActive(key: String, isActive: Boolean) {
         viewModelScope.launch {
             repository.setApiKeyActive(key, isActive)
+        }
+    }
+
+    fun updateNgrokConfig(context: Context, token: String, onComplete: (Boolean, String?) -> Unit) {
+        repository.config.ngrokToken = token
+        _serverState.value = _serverState.value.copy(
+            ngrokToken = token
+        )
+        viewModelScope.launch {
+            com.example.server.NgrokManager.start(context, repository.config.port, token) { url ->
+                repository.config.ngrokUrl = url
+                _serverState.value = _serverState.value.copy(ngrokUrl = url)
+                onComplete(true, url)
+            }
         }
     }
 

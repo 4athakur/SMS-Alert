@@ -20,7 +20,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BatteryAlert
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -144,6 +146,64 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Save Configuration")
                 }
+            }
+        }
+
+        // Dynamic DNS Configuration Card
+        // removed duckDnsDomain
+        var ngrokToken by remember { mutableStateOf(viewModel.serverState.value.ngrokToken) }
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.Public, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(text = "Ngrok Tunnel", fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 12.dp))
+                }
+                Text(
+                    text = "Expose the local server securely using Ngrok to generate a stable public HTTPS URL.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                OutlinedTextField(
+                    value = ngrokToken,
+                    onValueChange = { ngrokToken = it },
+                    label = { Text("Ngrok Authtoken") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                if (viewModel.serverState.value.ngrokUrl.isNotBlank()) {
+                    Text(
+                        text = "Current URL: ${viewModel.serverState.value.ngrokUrl}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+                Button(
+                    onClick = {
+                        Toast.makeText(context, "Starting Ngrok tunnel...", Toast.LENGTH_SHORT).show()
+                        viewModel.updateNgrokConfig(context, ngrokToken) { success, url ->
+                            val msg = if (success) "Ngrok connected! URL: $url" else "Failed to start Ngrok."
+                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Start Ngrok & Save Config")
+                }
+                Text(
+                    text = "Note: Create an account on ngrok.com to get an authtoken. The tunnel will be active while the SMS gateway server is running.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
 

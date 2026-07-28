@@ -99,7 +99,7 @@ fun SmsGatewayApp(viewModel: MainViewModel) {
     val context = LocalContext.current
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    var showDocumentation by remember { mutableStateOf(false) }
+    var activeSidebarRoute by remember { mutableStateOf<String?>(null) }
 
     val serverState by viewModel.serverState.collectAsStateWithLifecycle()
     val totalCount by viewModel.totalCount.collectAsStateWithLifecycle()
@@ -119,11 +119,11 @@ fun SmsGatewayApp(viewModel: MainViewModel) {
 
     var isSidebarOpen by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = isSidebarOpen || showDocumentation) {
+    BackHandler(enabled = isSidebarOpen || activeSidebarRoute != null) {
         if (isSidebarOpen) {
             isSidebarOpen = false
-        } else if (showDocumentation) {
-            showDocumentation = false
+        } else if (activeSidebarRoute != null) {
+            activeSidebarRoute = null
         }
     }
 
@@ -148,7 +148,11 @@ fun SmsGatewayApp(viewModel: MainViewModel) {
                                 letterSpacing = 2.sp
                             )
                             Text(
-                                text = if (showDocumentation) "Documentation" else currentTab.title,
+                                text = when (activeSidebarRoute) {
+                                    "docs" -> "Documentation"
+                                    "monitor" -> "System Monitor"
+                                    else -> currentTab.title
+                                },
                                 style = MaterialTheme.typography.titleLarge,
                                 color = MaterialTheme.colorScheme.onBackground,
                                 fontWeight = FontWeight.Medium
@@ -180,7 +184,7 @@ fun SmsGatewayApp(viewModel: MainViewModel) {
                 }
             },
             bottomBar = {
-                if (!showDocumentation) {
+                if (activeSidebarRoute == null) {
                     Surface(
                         color = MaterialTheme.colorScheme.surface,
                         modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
@@ -218,11 +222,16 @@ fun SmsGatewayApp(viewModel: MainViewModel) {
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                if (showDocumentation) {
+                if (activeSidebarRoute == "docs") {
                     DocumentationScreen(
                         viewModel = viewModel,
                         serverState = serverState,
-                        onBack = { showDocumentation = false }
+                        onBack = { activeSidebarRoute = null }
+                    )
+                } else if (activeSidebarRoute == "monitor") {
+                    SystemMonitorScreen(
+                        viewModel = viewModel,
+                        serverState = serverState
                     )
                 } else {
                     when (currentTab) {
@@ -303,11 +312,22 @@ fun SmsGatewayApp(viewModel: MainViewModel) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
                     NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.Monitor, contentDescription = null) },
+                        label = { Text("System Monitor") },
+                        selected = activeSidebarRoute == "monitor",
+                        onClick = {
+                            activeSidebarRoute = "monitor"
+                            isSidebarOpen = false
+                        },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    )
+
+                    NavigationDrawerItem(
                         icon = { Icon(Icons.Default.Description, contentDescription = null) },
                         label = { Text("Documentation") },
-                        selected = showDocumentation,
+                        selected = activeSidebarRoute == "docs",
                         onClick = {
-                            showDocumentation = true
+                            activeSidebarRoute = "docs"
                             isSidebarOpen = false
                         },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)

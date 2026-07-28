@@ -38,6 +38,14 @@ class ServerConfigManager(context: Context) {
         get() = prefs.getString(KEY_APP_THEME, "DARK") ?: "DARK"
         set(value) = prefs.edit().putString(KEY_APP_THEME, value).apply()
 
+    var ngrokToken: String
+        get() = prefs.getString(KEY_NGROK_TOKEN, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_NGROK_TOKEN, value).apply()
+
+    var ngrokUrl: String
+        get() = prefs.getString(KEY_NGROK_URL, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_NGROK_URL, value).apply()
+
     companion object {
         private const val KEY_PORT = "server_port"
         private const val KEY_AUTO_START = "auto_start_boot"
@@ -47,5 +55,7 @@ class ServerConfigManager(context: Context) {
         private const val KEY_CLOUD_SYNC = "cloud_sync"
         private const val KEY_ACTIVE_API_KEY = "active_api_key"
         private const val KEY_APP_THEME = "app_theme"
+        private const val KEY_NGROK_TOKEN = "ngrok_token"
+        private const val KEY_NGROK_URL = "ngrok_url"
     }
 }

@@ -8,6 +8,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
@@ -121,6 +123,7 @@ fun ServerStatusHeroCard(
     onToggleServer: () -> Unit,
     onRefresh: () -> Unit
 ) {
+    val context = LocalContext.current
     val isRunning = serverState.isRunning
     val statusColor by animateColorAsState(
         targetValue = if (isRunning) Emerald500 else Rose500,
@@ -147,11 +150,24 @@ fun ServerStatusHeroCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(
-                        text = "Network Endpoint",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Network Endpoint",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Stable IP Info",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .size(14.dp)
+                                .clickable {
+                                    android.widget.Toast.makeText(context, "For Mobile Data, use a Mesh VPN (like Tailscale) to get a consistent IP that survives restarts and CGNAT.", android.widget.Toast.LENGTH_LONG).show()
+                                }
+                        )
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "${serverState.ipAddress}:${serverState.port}",
