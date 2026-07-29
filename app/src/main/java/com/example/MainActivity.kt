@@ -334,6 +334,28 @@ fun SmsGatewayApp(viewModel: MainViewModel) {
                     )
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outline)
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 28.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "Show Server Notification",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        androidx.compose.material3.Switch(
+                            checked = serverState.showServerNotification,
+                            onCheckedChange = { show ->
+                                viewModel.toggleServerNotification(context, show)
+                            }
+                        )
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outline)
                     Text(
                         "Theme",
                         style = MaterialTheme.typography.labelLarge,

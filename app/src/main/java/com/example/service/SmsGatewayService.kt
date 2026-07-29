@@ -71,6 +71,7 @@ class SmsGatewayService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action ?: ACTION_START
+        val showNotification = intent?.getBooleanExtra("SHOW_NOTIFICATION", repository.config.showServerNotification) ?: repository.config.showServerNotification
 
         when (action) {
             ACTION_STOP -> {
@@ -79,14 +80,43 @@ class SmsGatewayService : Service() {
                 stopSelf()
             }
             ACTION_START -> {
-                startServer()
+                startServer(showNotification)
+            }
+            "ACTION_UPDATE_NOTIFICATION" -> {
+                updateNotificationState(showNotification)
             }
         }
 
         return START_STICKY
     }
 
-    private fun startServer() {
+    private fun updateNotificationState(show: Boolean) {
+        if (show) {
+            val notification = buildNotification()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val foregroundServiceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                } else {
+                    0
+                }
+                try {
+                    if (foregroundServiceType != 0) {
+                        startForeground(NOTIFICATION_ID, notification, foregroundServiceType)
+                    } else {
+                        startForeground(NOTIFICATION_ID, notification)
+                    }
+                } catch (e: Exception) {
+                    startForeground(NOTIFICATION_ID, notification)
+                }
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } else {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        }
+    }
+
+    private fun startServer(showNotification: Boolean) {
         val port = repository.config.port
         if (httpServer == null || httpServer?.isRunning == false) {
             httpServer = SmsHttpServer(applicationContext, port, repository)
@@ -96,23 +126,25 @@ class SmsGatewayService : Service() {
 
         val notification = buildNotification()
         restartNgrok()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val foregroundServiceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-            } else {
-                0
-            }
-            try {
-                if (foregroundServiceType != 0) {
-                    startForeground(NOTIFICATION_ID, notification, foregroundServiceType)
+        if (showNotification) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val foregroundServiceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
                 } else {
+                    0
+                }
+                try {
+                    if (foregroundServiceType != 0) {
+                        startForeground(NOTIFICATION_ID, notification, foregroundServiceType)
+                    } else {
+                        startForeground(NOTIFICATION_ID, notification)
+                    }
+                } catch (e: Exception) {
                     startForeground(NOTIFICATION_ID, notification)
                 }
-            } catch (e: Exception) {
+            } else {
                 startForeground(NOTIFICATION_ID, notification)
             }
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
         }
     }
 

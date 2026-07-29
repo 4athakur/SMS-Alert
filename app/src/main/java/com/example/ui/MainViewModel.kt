@@ -27,7 +27,8 @@ data class ServerUiState(
     val networkType: String = "Unknown",
     val activeApiKey: String = "",
     val ngrokUrl: String = "",
-    val ngrokToken: String = ""
+    val ngrokToken: String = "",
+    val showServerNotification: Boolean = false
 )
 
 class MainViewModel(private val repository: SmsGatewayRepository) : ViewModel() {
@@ -36,7 +37,8 @@ class MainViewModel(private val repository: SmsGatewayRepository) : ViewModel() 
         port = repository.config.port,
         activeApiKey = repository.config.activeApiKey,
         ngrokUrl = repository.config.ngrokUrl,
-        ngrokToken = repository.config.ngrokToken
+        ngrokToken = repository.config.ngrokToken,
+        showServerNotification = repository.config.showServerNotification
     ))
     val serverState: StateFlow<ServerUiState> = _serverState.asStateFlow()
 
@@ -111,9 +113,10 @@ class MainViewModel(private val repository: SmsGatewayRepository) : ViewModel() 
         val newState = !_serverState.value.isRunning
         val intent = Intent(context, SmsGatewayService::class.java).apply {
             action = if (newState) SmsGatewayService.ACTION_START else SmsGatewayService.ACTION_STOP
+            putExtra("SHOW_NOTIFICATION", repository.config.showServerNotification)
         }
         if (newState) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (repository.config.showServerNotification && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
                 context.startService(intent)
@@ -122,6 +125,22 @@ class MainViewModel(private val repository: SmsGatewayRepository) : ViewModel() 
             context.stopService(intent)
         }
         _serverState.value = _serverState.value.copy(isRunning = newState)
+    }
+
+    fun toggleServerNotification(context: Context, show: Boolean) {
+        repository.config.showServerNotification = show
+        _serverState.value = _serverState.value.copy(showServerNotification = show)
+        if (_serverState.value.isRunning) {
+            val intent = Intent(context, SmsGatewayService::class.java).apply {
+                action = "ACTION_UPDATE_NOTIFICATION"
+                putExtra("SHOW_NOTIFICATION", show)
+            }
+            if (show && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        }
     }
 
     fun generateNewApiKey(label: String = "New Key") {

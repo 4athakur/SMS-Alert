@@ -46,6 +46,10 @@ class ServerConfigManager(context: Context) {
         get() = prefs.getString(KEY_NGROK_URL, "") ?: ""
         set(value) = prefs.edit().putString(KEY_NGROK_URL, value).apply()
 
+    var showServerNotification: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_SERVER_NOTIFICATION, false)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_SERVER_NOTIFICATION, value).apply()
+
     companion object {
         private const val KEY_PORT = "server_port"
         private const val KEY_AUTO_START = "auto_start_boot"
@@ -57,5 +61,6 @@ class ServerConfigManager(context: Context) {
         private const val KEY_APP_THEME = "app_theme"
         private const val KEY_NGROK_TOKEN = "ngrok_token"
         private const val KEY_NGROK_URL = "ngrok_url"
+        private const val KEY_SHOW_SERVER_NOTIFICATION = "show_server_notification"
     }
 }
